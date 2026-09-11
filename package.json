@@ -1,0 +1,24 @@
+{
+  "name": "whatsapp-personal-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal WhatsApp assistant with Gemini, Gmail, and MS Graph integrations",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "@whiskeysockets/baileys": "^6.7.24",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "pino": "^10.3.1",
+    "sqlite-vec": "^0.1.9"
+  }
+}
