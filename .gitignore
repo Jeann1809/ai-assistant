@@ -1,0 +1,19 @@
+node_modules/
+
+# secrets
+.env
+
+# whatsapp session data
+auth_info_baileys/
+
+# oauth tokens
+token*.json
+
+# databases
+*.db
+*.sqlite
+*.sqlite3
+
+# logs
+logs/
+*.log
