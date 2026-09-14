@@ -67,16 +67,24 @@ README.md
 
 ## Build Order
 
-1. Project skeleton + config + `.env.example`
-2. Baileys connection (QR auth, reconnect logic, message listener)
-3. Gemini client wrapper (function calling, error/rate-limit handling)
-4. SQLite short-term memory
-5. sqlite-vec long-term memory
-6. Gmail OAuth (PKCE) + read/send mail tools
-7. MS Graph OAuth (PKCE) + basic mail/calendar/OneDrive tools
-8. Confirmation flow for write actions (send email, create event, on both providers)
-9. Wire everything together end-to-end
-10. Deploy to Oracle VM with systemd
+1. [x] Project skeleton + config + `.env.example`
+2. [x] Baileys connection (QR auth, reconnect logic, message listener)
+3. [x] Gemini client wrapper (function calling, error/rate-limit handling)
+4. [ ] SQLite short-term memory — **next up**
+5. [ ] sqlite-vec long-term memory
+6. [ ] Gmail OAuth (PKCE) + read/send mail tools
+7. [ ] MS Graph OAuth (PKCE) + basic mail/calendar/OneDrive tools
+8. [ ] Confirmation flow for write actions (send email, create event, on both providers)
+9. [ ] Wire everything together end-to-end — this is where WhatsApp messages actually start reaching Gemini and getting replies; not before
+10. [ ] Deploy to Oracle VM with systemd
+
+## Status / Where We Left Off
+
+- M1–M3 done and merged to `main` (each feature branch was merged locally with `git merge --no-ff` + `git push origin main` — no GitHub PRs were actually opened for M2/M3, just the branch + local merge).
+- WhatsApp (`src/whatsapp/`) and Gemini (`src/llm/`) are both working **in isolation** but not wired together yet — WhatsApp only logs incoming messages, it doesn't call Gemini. That wiring is M9, intentionally.
+- Local `.env` already has a real `GEMINI_API_KEY` (no-billing project) and `auth_info_baileys/` already holds a linked WhatsApp session — don't need to redo device pairing or key setup to keep building.
+- **Known deviation from Tech Stack**: `@whiskeysockets/baileys` in `package.json` points at a fork (`github:doryani-ai/Baileys#fix/companion-reg-refresh`), not the official npm package. Official releases (6.7.24 and all 7.0.0 RCs) can't complete QR pairing — WhatsApp added a `companion_reg_refresh` step to device linking (~July 2026) that no current release handles (see `WhiskeySockets/Baileys#2737`, unmerged fix in `#2765`). Check if that PR merged upstream before doing more WhatsApp-related work; switch back to the official package if so.
+- `dotenv.config()` is called with `{ quiet: true }` in `src/index.js` — the official `dotenv` package prints unrelated promotional "tips" to console on load by default, which was polluting the pino logs.
 
 ## Known Constraints / Gotchas to Respect in Code
 
