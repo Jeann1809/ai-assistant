@@ -67,7 +67,7 @@ export async function connectWhatsApp(onMessage) {
 
     for (const message of messages) {
       if (message.key.fromMe || !message.message) continue;
-      onMessage(message);
+      onMessage(message, sock);
     }
   });
 
