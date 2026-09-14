@@ -1,3 +1,8 @@
+// package.json points @whiskeysockets/baileys at a fork branch
+// (doryani-ai/Baileys#fix/companion-reg-refresh) because official releases
+// can't complete QR pairing since WhatsApp added a companion_reg_refresh
+// step in ~July 2026 (WhiskeySockets/Baileys#2737, unmerged fix in #2765).
+// Switch back to the official npm package once that PR lands.
 import {
   makeWASocket,
   useMultiFileAuthState,

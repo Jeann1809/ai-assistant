@@ -15,7 +15,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@google/genai": "^2.22.0",
-    "@whiskeysockets/baileys": "^6.7.24",
+    "@whiskeysockets/baileys": "github:doryani-ai/Baileys#fix/companion-reg-refresh",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^17.4.2",
     "pino": "^10.3.1",
