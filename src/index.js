@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+
+config({ quiet: true });
 import { logger } from './logger.js';
 import { startWhatsApp } from './whatsapp/index.js';
 
