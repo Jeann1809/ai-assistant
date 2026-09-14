@@ -17,7 +17,7 @@ function isRetryable(err) {
 
 // Gemini free tier RPM/TPM limits change over time — recheck ai.google.dev
 // before assuming these retry counts/delays are still reasonable.
-export async function generateReply({ contents, tools, toolConfig } = {}) {
+export async function generateReply({ contents, tools, toolConfig, systemInstruction } = {}) {
   const ai = getClient();
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -25,7 +25,7 @@ export async function generateReply({ contents, tools, toolConfig } = {}) {
       const response = await ai.models.generateContent({
         model: MODEL,
         contents,
-        config: { tools, toolConfig },
+        config: { tools, toolConfig, systemInstruction },
       });
 
       if (typeof response?.text !== 'string' && !response?.functionCalls?.length) {
