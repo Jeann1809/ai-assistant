@@ -1,6 +1,7 @@
 import { createModelContent, createPartFromFunctionResponse, createUserContent, Type } from '@google/genai';
 import { generateReply } from './generate.js';
 import { tavilySearch } from './webSearch.js';
+import { addMessage, getRecentHistory } from '../memory/short-term.js';
 import { logger } from '../logger.js';
 
 function buildSystemInstruction() {
@@ -40,12 +41,18 @@ const MAX_TOOL_HOPS = 3;
 
 // Turns a raw WhatsApp message into a Gemini reply. Gemini decides whether it
 // needs to search the web (via Tavily) and, if so, we run the search and hand
-// the results back for a follow-up turn. No conversation history yet (M4) —
-// each message is answered standalone.
-export async function getReply(userText) {
+// the results back for a follow-up turn. `jid` identifies the WhatsApp chat
+// so replies stay threaded per-conversation in short-term (SQLite) history.
+export async function getReply(userText, jid) {
   try {
     const systemInstruction = buildSystemInstruction();
-    const contents = [createUserContent(userText)];
+    const history = getRecentHistory(jid);
+    const contents = [
+      ...history.map((m) =>
+        m.role === 'user' ? createUserContent(m.text) : createModelContent(m.text)
+      ),
+      createUserContent(userText),
+    ];
 
     let response = await generateReply({
       contents,
@@ -98,6 +105,11 @@ export async function getReply(userText) {
       logger.warn({ response }, 'gemini returned no text');
       return "Sorry, I couldn't come up with a reply to that.";
     }
+
+    // only the final user-visible exchange is worth remembering — tool-call
+    // scaffolding above is re-derived fresh on every request
+    addMessage(jid, 'user', userText);
+    addMessage(jid, 'model', response.text);
 
     return response.text;
   } catch (err) {

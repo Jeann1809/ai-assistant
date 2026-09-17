@@ -70,8 +70,8 @@ README.md
 1. [x] Project skeleton + config + `.env.example`
 2. [x] Baileys connection (QR auth, reconnect logic, message listener)
 3. [x] Gemini client wrapper (function calling, error/rate-limit handling)
-4. [ ] SQLite short-term memory — **next up**
-5. [ ] sqlite-vec long-term memory
+4. [x] SQLite short-term memory
+5. [ ] sqlite-vec long-term memory — **next up**
 6. [ ] Gmail OAuth (PKCE) + read/send mail tools
 7. [ ] MS Graph OAuth (PKCE) + basic mail/calendar/OneDrive tools
 8. [ ] Confirmation flow for write actions (send email, create event, on both providers)
@@ -80,6 +80,7 @@ README.md
 
 ## Status / Where We Left Off
 
+- **M4 (short-term memory) done, 2026-09-17**: `src/memory/short-term.js` wraps `better-sqlite3` — a single `messages` table (`jid`, `role`, `text`, `created_at`), indexed on `(jid, created_at)`. `getRecentHistory(jid, limit = 20)` returns the last 20 messages per chat oldest-first; `addMessage(jid, role, text)` is best-effort (logs and swallows on write failure rather than breaking a reply that already went out over WhatsApp — read failures degrade to empty history the same way, per the mandatory-error-handling rule, since a personal assistant shouldn't crash over a local DB hiccup). `respond.js#getReply` now takes `(userText, jid)`: loads history, converts it into `createUserContent`/`createModelContent` turns ahead of the new message, and — only after a successful final text reply (not on error, and not for intermediate tool-call scaffolding) — persists the new user/model pair. `whatsapp/index.js` passes the chat's `remoteJid` through as `jid`. DB path comes from `SHORT_TERM_DB_PATH` (already in `.env.example`); `data/` is created on first write and is gitignored via the existing `*.sqlite` rule. Context-dependent follow-ups ("and where can I watch it?") now work within a chat. Not yet tested against a live WhatsApp conversation — verified via a standalone script exercising `addMessage`/`getRecentHistory` (ordering, per-chat isolation, empty-history fallback).
 - M1–M3 done and merged to `main` (each feature branch was merged locally with `git merge --no-ff` + `git push origin main` — no GitHub PRs were actually opened for M2/M3, just the branch + local merge).
 - **M9 (wiring) done out of order, 2026-09-14**: WhatsApp messages now reach Gemini and get real replies. `src/whatsapp/index.js` extracts text, skips group chats (`@g.us`) and unsupported message types, calls `src/llm/respond.js`, and sends the reply back via `sock.sendMessage`. `respond.js` uses Gemini function calling (not built-in grounding — see deviation below): declares a `web_search` tool, and when Gemini calls it, runs a Tavily search and feeds results back for up to 3 follow-up turns before forcing a text-only final answer. No conversation history is threaded in yet — each message is answered standalone, so context-dependent follow-ups ("and where can I watch it?") don't work until M4 lands. Confirmed end-to-end over live WhatsApp messages.
 - Local `.env` already has a real `GEMINI_API_KEY` (no-billing project, confirmed "Free tier" in AI Studio) and `TAVILY_API_KEY`, and `auth_info_baileys/` already holds a linked WhatsApp session — don't need to redo device pairing or key setup to keep building.

@@ -22,7 +22,7 @@ export async function startWhatsApp() {
     if (!from || from.endsWith('@g.us')) return;
     if (text === '[unsupported message type]') return;
 
-    const reply = await getReply(text);
+    const reply = await getReply(text, from);
 
     try {
       await sock.sendMessage(from, { text: reply });
