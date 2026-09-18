@@ -10,6 +10,7 @@ auth_info_baileys/
 token*.json
 
 # databases
+data/
 *.db
 *.sqlite
 *.sqlite3

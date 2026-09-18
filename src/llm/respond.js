@@ -40,68 +40,67 @@ const MAX_TOOL_HOPS = 3;
 
 // Turns a raw WhatsApp message into a Gemini reply. Gemini decides whether it
 // needs to search the web (via Tavily) and, if so, we run the search and hand
-// the results back for a follow-up turn. No conversation history yet (M4) —
-// each message is answered standalone.
-export async function getReply(userText) {
-  try {
-    const systemInstruction = buildSystemInstruction();
-    const contents = [createUserContent(userText)];
+// the results back for a follow-up turn. `history` is the recent conversation
+// from short-term memory ({ role: 'user' | 'model', text }, oldest first).
+// Throws on failure — the caller decides what to tell the user, and must not
+// store an error message as if it were a real answer.
+export async function getReply(userText, history = []) {
+  const systemInstruction = buildSystemInstruction();
+  const contents = [
+    ...history.map((m) => (m.role === 'user' ? createUserContent(m.text) : createModelContent(m.text))),
+    createUserContent(userText),
+  ];
 
-    let response = await generateReply({
-      contents,
-      systemInstruction,
-      tools: [WEB_SEARCH_TOOL],
-    });
+  let response = await generateReply({
+    contents,
+    systemInstruction,
+    tools: [WEB_SEARCH_TOOL],
+  });
 
-    let hops = 0;
-    while (response.functionCalls?.length && hops < MAX_TOOL_HOPS) {
-      hops++;
-      const call = response.functionCalls[0];
+  let hops = 0;
+  while (response.functionCalls?.length && hops < MAX_TOOL_HOPS) {
+    hops++;
+    const call = response.functionCalls[0];
 
-      let toolResponse;
-      try {
-        const results = await tavilySearch(call.args?.query ?? userText);
-        toolResponse = { output: results };
-      } catch (err) {
-        logger.error({ err }, 'tavily search failed');
-        toolResponse = { error: err.message };
-      }
-
-      contents.push(createModelContent(response.candidates[0].content.parts));
-      contents.push(
-        createUserContent([
-          createPartFromFunctionResponse(call.id ?? call.name, call.name, toolResponse),
-        ])
-      );
-
-      response = await generateReply({ contents, systemInstruction, tools: [WEB_SEARCH_TOOL] });
+    let toolResponse;
+    try {
+      const results = await tavilySearch(call.args?.query ?? userText);
+      toolResponse = { output: results };
+    } catch (err) {
+      logger.error({ err }, 'tavily search failed');
+      toolResponse = { error: err.message };
     }
 
-    // hit the hop cap while gemini still wanted to search — cut off tool
-    // access and force a text answer from whatever it already gathered,
-    // rather than leaving it hanging with no reply
-    if (response.functionCalls?.length) {
-      logger.warn({ hops }, 'hit max tool hops, forcing a text-only final answer');
-      const call = response.functionCalls[0];
-      contents.push(createModelContent(response.candidates[0].content.parts));
-      contents.push(
-        createUserContent([
-          createPartFromFunctionResponse(call.id ?? call.name, call.name, {
-            error: 'No more searches available — answer with what you already found.',
-          }),
-        ])
-      );
-      response = await generateReply({ contents, systemInstruction });
-    }
+    contents.push(createModelContent(response.candidates[0].content.parts));
+    contents.push(
+      createUserContent([
+        createPartFromFunctionResponse(call.id ?? call.name, call.name, toolResponse),
+      ])
+    );
 
-    if (!response.text) {
-      logger.warn({ response }, 'gemini returned no text');
-      return "Sorry, I couldn't come up with a reply to that.";
-    }
-
-    return response.text;
-  } catch (err) {
-    logger.error({ err }, 'gemini reply generation failed');
-    return "Sorry, I ran into an error talking to Gemini — try again in a bit.";
+    response = await generateReply({ contents, systemInstruction, tools: [WEB_SEARCH_TOOL] });
   }
+
+  // hit the hop cap while gemini still wanted to search — cut off tool
+  // access and force a text answer from whatever it already gathered,
+  // rather than leaving it hanging with no reply
+  if (response.functionCalls?.length) {
+    logger.warn({ hops }, 'hit max tool hops, forcing a text-only final answer');
+    const call = response.functionCalls[0];
+    contents.push(createModelContent(response.candidates[0].content.parts));
+    contents.push(
+      createUserContent([
+        createPartFromFunctionResponse(call.id ?? call.name, call.name, {
+          error: 'No more searches available — answer with what you already found.',
+        }),
+      ])
+    );
+    response = await generateReply({ contents, systemInstruction });
+  }
+
+  if (!response.text) {
+    throw new Error('Gemini returned no text');
+  }
+
+  return response.text;
 }
