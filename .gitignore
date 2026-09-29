@@ -8,11 +8,19 @@ auth_info_baileys/
 
 # oauth tokens
 token*.json
+token*.json.*.tmp
 
 # databases
+data/
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db-journal
+*.db-wal
+*.db-shm
 
 # logs
 logs/
