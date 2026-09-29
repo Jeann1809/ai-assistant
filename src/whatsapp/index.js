@@ -4,10 +4,12 @@ import { getHistory, saveExchange } from '../memory/short-term.js';
 import { createConversationHandler } from '../memory/conversation.js';
 import { logger } from '../logger.js';
 import { ownerJid, isOwnerMessage } from './owner.js';
+import { createConfirmationCommands } from '../confirm/index.js';
 
 export async function startWhatsApp() {
   const allowedJid = ownerJid();
-  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger });
+  const { handleMessage: handleConfirmation, proposeEmail } = createConfirmationCommands({ logger });
+  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail });
   return connectWhatsApp(async (message, sock) => {
     if (!isOwnerMessage(message, allowedJid)) return;
     const from = message.key.remoteJid;

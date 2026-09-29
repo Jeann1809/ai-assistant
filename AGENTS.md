@@ -109,9 +109,9 @@ README.md
 2. [x] Baileys connection (QR, reconnect, listener)
 3. [x] Gemini client wrapper (function calling, error / rate-limit handling)
 4. [x] SQLite short-term memory (local tests pass; live WhatsApp smoke test pending)
-5. [ ] Gmail OAuth (PKCE) + read tools + **Canvas digest** (implemented on `feat/gmail-canvas`; local consent + live smoke test pending, see `docs/gmail.md`)
-6. [ ] Confirmation flow for write actions
-7. [ ] Gmail send tool (behind confirmation)
+5. [x] Gmail OAuth (PKCE) + read tools + **Canvas digest** (user confirmed live operation; merged to main, see `docs/gmail.md`)
+6. [x] Confirmation flow for write actions (43 offline tests pass; WhatsApp simulation smoke test pending, see `docs/confirmation.md`)
+7. [ ] Gmail send tool (implemented on `feat/gmail-send`, 60 offline tests pass; send consent + live test pending, see `docs/gmail-send.md`)
 8. [ ] sqlite-vec long-term memory
 9. [x] End-to-end wiring (done early, 2026-09-14): WhatsApp -> Gemini -> reply, with Tavily `web_search` tool (up to 3 follow-up turns)
 10. [ ] MS Graph OAuth + basic tools (personal account only, lowest priority now that Canvas goes through Gmail)
@@ -121,7 +121,10 @@ README.md
 
 - M1-M3 and M9 done and on `main`. Each feature was merged locally with `git merge --no-ff` and pushed, no GitHub PRs opened.
 - M4 implemented on `feat/short-term-memory`: SQLite keeps 200 messages per chat and sends the last 20 to Gemini. Turns run sequentially per chat; only successfully generated and sent replies are saved. Seven offline tests pass via `npm.cmd test`; live WhatsApp smoke test pending.
-- M5 code uses built-in fetch/crypto/http, no new dependencies. `npm.cmd run gmail:auth` runs Desktop PKCE consent; tokens live in ignored `data/token-gmail.json`. Gmail tools are read-only and Canvas is queried on demand. Offline tests pass; live Google/WhatsApp verification is pending.
+- M5 merged to main; user confirmed Gmail/WhatsApp works live. Built-in fetch/crypto/http, no new dependencies. `npm.cmd run gmail:auth` runs Desktop PKCE consent; tokens live in ignored `data/token-gmail.json`. Gmail tools are read-only and Canvas is queried on demand.
+- M6 changes carried into `feat/gmail-send` without committing: `/probar-confirmacion` creates a harmless simulation; `confirmar CODE`, `cancelar`, `pendiente` bypass Gemini. One proposal per chat, expires after 5 minutes or restart; manual WhatsApp simulation pending.
+- M7 implemented: Gemini proposes `gmail_prepare_send`; only owner confirmation reaches the sender. One recipient, plain text, subject <=160/body <=2000 chars, full preview including verified sender. OAuth sending is opt-in via `npm.cmd run gmail:auth -- --send`. Existing read-only tokens still work for reads. 60 offline tests pass; live sending pending.
+- Sending does not retry network/429/5xx failures to avoid duplicates; only an explicit 401 rejection permits one refresh/retry. Approval is consumed even on failure. Check Enviados after uncertain outcomes before proposing another send.
 - Gmail consent preference: start in **Testing** with the personal Gmail as a test user; expect re-auth every 7 days. `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` must be configured locally.
 - WhatsApp only accepts the user's **other number**, configured via required `WHATSAPP_OWNER_NUMBER` (country code + digits, optional +). Groups, outgoing messages and unrecognized LIDs are ignored. Missing owner configuration prevents startup.
 - Local `.env` has real `GEMINI_API_KEY` (no-billing project, Free tier confirmed) and `TAVILY_API_KEY`. `auth_info_baileys/` holds a linked WhatsApp session, so no re-pairing needed.

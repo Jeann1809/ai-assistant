@@ -1,8 +1,9 @@
 # Gmail + Canvas (M5)
 
-Uses Node's built-in `fetch`, HTTP server and crypto modules. No new dependencies,
-no polling, no Gmail writes. Google receives only the `gmail.readonly` scope;
-reading a message does not mark it read. The Desktop flow uses PKCE S256, random
+Uses Node's built-in `fetch`, HTTP server and crypto modules. No new dependencies
+or polling. This default setup requests only the `gmail.readonly` scope;
+reading a message does not mark it read. To opt into confirmed sending, follow
+[Gmail send setup](gmail-send.md). The Desktop flow uses PKCE S256, random
 state, a temporary port on `127.0.0.1`, and a three-minute consent timeout.
 
 ## Configure locally
@@ -84,7 +85,8 @@ If no emails match, it must not claim that you have no pending assignments.
 - Requested email text is sent to Gemini for the answer. Answer summaries enter
   local conversation history; raw email tool payloads are not persisted there.
 - Tool results are quoted untrusted data. Instructions inside mail or web results
-  must not be followed. No send/delete/modify tools exist. Web search is blocked
+  must not be followed. There are no direct send/delete/modify tools for the model;
+  it can propose an email for explicit confirmation (see the send guide). Web search is blocked
   within a turn once Gmail is requested, including mixed tool batches. Prompt
   instructions also prohibit putting private mail into web queries; this is not
   a guarantee against every possible prompt-injection attempt across history.

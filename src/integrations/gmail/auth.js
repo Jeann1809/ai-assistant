@@ -4,6 +4,9 @@ import { randomBytes, createHash } from 'node:crypto';
 import { GmailError, reauthError, requestJson } from './http.js';
 
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+export const sendScopeError = () => new GmailError('SEND_SCOPE',
+  'Falta permiso para enviar. Ejecuta npm.cmd run gmail:auth -- --send y acepta lectura y envio. Luego pide una nueva propuesta.');
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export function getOAuthConfig() {
@@ -15,13 +18,13 @@ export function getOAuthConfig() {
   return { clientId, clientSecret };
 }
 
-export function createAuthorization(clientId, redirectUri) {
+export function createAuthorization(clientId, redirectUri, scopes = [GMAIL_SCOPE]) {
   const verifier = randomBytes(32).toString('base64url');
   const state = randomBytes(32).toString('base64url');
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.search = new URLSearchParams({
     client_id: clientId, redirect_uri: redirectUri, response_type: 'code',
-    scope: GMAIL_SCOPE, access_type: 'offline', prompt: 'consent', state,
+    scope: scopes.join(' '), access_type: 'offline', prompt: 'consent', state,
     code_challenge_method: 'S256',
     code_challenge: createHash('sha256').update(verifier).digest('base64url'),
   }).toString();
@@ -51,7 +54,7 @@ export function createTokenStore(path = './data/token-gmail.json') {
   };
 }
 
-function normalizeTokens(data, previous = {}, now = Date.now()) {
+function normalizeTokens(data, previous = {}, now = Date.now(), requiredScopes = [GMAIL_SCOPE]) {
   const refreshToken = data.refresh_token ?? previous.refresh_token;
   if (typeof data.access_token !== 'string' || !data.access_token ||
       typeof refreshToken !== 'string' || !refreshToken ||
@@ -60,7 +63,9 @@ function normalizeTokens(data, previous = {}, now = Date.now()) {
       (data.scope !== undefined && (typeof data.scope !== 'string' || !data.scope.split(' ').includes(GMAIL_SCOPE)))) {
     throw reauthError();
   }
-  return { access_token: data.access_token, refresh_token: refreshToken,
+  const scopes = data.scope?.split(' ') ?? previous.scopes ?? requiredScopes;
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) throw sendScopeError();
+  return { access_token: data.access_token, refresh_token: refreshToken, scopes,
     expires_at: now + data.expires_in * 1000 };
 }
 
@@ -73,10 +78,14 @@ export function createGmailAuth({ config = getOAuthConfig, store = createTokenSt
       body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, ...params }) });
   }
   return {
-    async exchangeCode(code, verifier, redirectUri) {
+    async exchangeCode(code, verifier, redirectUri, scopes = [GMAIL_SCOPE]) {
       const data = await tokenRequest({ grant_type: 'authorization_code', code,
         code_verifier: verifier, redirect_uri: redirectUri });
-      await store.write(normalizeTokens(data, {}, now()));
+      await store.write(normalizeTokens(data, {}, now(), scopes));
+    },
+    async requireSendPermission() {
+      const tokens = await store.read();
+      if (!Array.isArray(tokens.scopes) || !tokens.scopes.includes(GMAIL_SEND_SCOPE)) throw sendScopeError();
     },
     async getAccessToken(forceRefresh = false) {
       if (refreshing) return refreshing;
