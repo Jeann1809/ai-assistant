@@ -1,10 +1,13 @@
 import { GmailError } from '../integrations/gmail/http.js';
 
 // Serialize read/generate/send/save per chat so follow-ups see the last answer.
-export function createConversationHandler({ getHistory, getReply, saveExchange, logger }) {
+export function createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail }) {
   const pending = new Map();
 
   async function respond(chatId, text, send) {
+    // Handle real owner commands before loading model history. Retrieved text
+    // and model replies never enter this path; confirmations use no Gemini quota.
+    if (handleConfirmation && await handleConfirmation(chatId, text, send)) return;
     let history;
     try {
       history = getHistory(chatId);
@@ -19,6 +22,16 @@ export function createConversationHandler({ getHistory, getReply, saveExchange, 
     } catch (err) {
       logger.error('reply generation failed');
       await send(err instanceof GmailError ? err.message : 'No pude generar una respuesta. Intenta de nuevo en un momento.');
+      return;
+    }
+    if (reply?.action === 'gmail_prepare_send') {
+      if (!proposeEmail) {
+        await send('El envio de correos no esta disponible en este chat.');
+        return;
+      }
+      // The deterministic preview replaces model prose. It is not an executed
+      // action and must not be saved as a successful model answer.
+      await proposeEmail(chatId, reply.email, send);
       return;
     }
     // Only remember answers accepted by WhatsApp.

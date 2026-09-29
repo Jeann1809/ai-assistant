@@ -37,3 +37,14 @@ Gmail and Canvas read tools are implemented. Follow [Gmail setup](docs/gmail.md)
 to enable the Gmail API without billing, configure a Desktop OAuth client in
 Testing, and run `npm.cmd run gmail:auth`. Live authorization and WhatsApp smoke
 testing must be completed locally before considering the integration verified.
+
+The confirmation flow is available through `/probar-confirmacion` in WhatsApp.
+Approve with `confirmar CODE`, discard with `cancelar`, or inspect with `pendiente`.
+Proposals expire after five minutes or a restart. That command runs a harmless
+simulation. See [confirmation setup and tests](docs/confirmation.md).
+
+Gmail sending is implemented behind the same confirmation flow. Authorize it
+with `npm.cmd run gmail:auth -- --send`, then ask the bot to send an email with an
+explicit recipient, subject and body. It shows the full preview before approval.
+The first version supports one recipient and plain text only. See
+[send setup and live test](docs/gmail-send.md). Live sending has not yet been verified.

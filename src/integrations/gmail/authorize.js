@@ -1,11 +1,11 @@
 import { createServer } from 'node:http';
-import { createAuthorization, createGmailAuth, getOAuthConfig } from './auth.js';
+import { createAuthorization, createGmailAuth, getOAuthConfig, GMAIL_SCOPE } from './auth.js';
 import { GmailError } from './http.js';
 
 // Bound only to loopback, with a short-lived state+PKCE pair. No token/code logs.
 export async function authorizeGmail({ auth = createGmailAuth(), config = getOAuthConfig,
   showUrl = (url) => console.log(`Abre este enlace en el navegador de este computador:\n${url}`),
-  timeoutMs = 180_000 } = {}) {
+  timeoutMs = 180_000, scopes = [GMAIL_SCOPE] } = {}) {
   const { clientId } = config();
   let session;
   let redirectUri;
@@ -43,10 +43,10 @@ export async function authorizeGmail({ auth = createGmailAuth(), config = getOAu
     'Se agoto el tiempo para autorizar Gmail. Ejecuta npm.cmd run gmail:auth de nuevo.')), timeoutMs);
   try {
     redirectUri = `http://127.0.0.1:${server.address().port}/oauth2callback`;
-    session = createAuthorization(clientId, redirectUri);
+    session = createAuthorization(clientId, redirectUri, scopes);
     showUrl(session.url);
     const code = await callback;
-    await auth.exchangeCode(code, session.verifier, redirectUri);
+    await auth.exchangeCode(code, session.verifier, redirectUri, scopes);
   } finally {
     clearTimeout(timer);
     server.close();
