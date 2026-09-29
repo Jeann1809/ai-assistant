@@ -22,8 +22,8 @@ let pruneStmt;
 // import time would run before config() (ES imports are hoisted). A failure
 // here (bad path, corrupt file, unwritable dir) is fatal on purpose: better to
 // crash on boot than to run an assistant that silently has no memory.
-export function initShortTermMemory() {
-  const path = process.env.SHORT_TERM_DB_PATH || './data/short-term.sqlite';
+export function initShortTermMemory(path = process.env.SHORT_TERM_DB_PATH || './data/short-term.sqlite') {
+  if (db) throw new Error('short-term memory already initialized');
   mkdirSync(dirname(path), { recursive: true });
 
   db = new Database(path);
@@ -50,6 +50,11 @@ export function initShortTermMemory() {
   `);
 
   logger.info({ path }, 'short-term memory ready');
+}
+
+export function closeShortTermMemory() {
+  db?.close();
+  db = undefined;
 }
 
 function requireDb() {
