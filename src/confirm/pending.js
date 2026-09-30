@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 
 const TTL_MS = 5 * 60 * 1000;
 
@@ -7,6 +7,16 @@ const TTL_MS = 5 * 60 * 1000;
 export function createConfirmations({ actions, now = Date.now, logger }) {
   const handlers = new Map(Object.entries(actions));
   const pending = new Map();
+  const recentCodes = new Map();
+
+  function nextCode(chatId) {
+    const recent = recentCodes.get(chatId) ?? [];
+    const available = Array.from({ length: 900 }, (_, index) => String(index + 100))
+      .filter((code) => !recent.includes(code));
+    const code = available[randomInt(available.length)];
+    recentCodes.set(chatId, [...recent, code].slice(-20));
+    return code;
+  }
 
   function current(chatId) {
     const entry = pending.get(chatId);
@@ -39,7 +49,7 @@ export function createConfirmations({ actions, now = Date.now, logger }) {
       if (typeof summary !== 'string' || !summary.trim() || summary.length > 3000) {
         throw new Error('Action preview must be complete and fit in one message');
       }
-      const proposal = { code: randomBytes(4).toString('hex'), summary,
+      const proposal = { code: nextCode(chatId), summary,
         payload: snapshot, handler, phase: 'delivering' };
       pending.set(chatId, proposal);
       try {
@@ -58,7 +68,7 @@ export function createConfirmations({ actions, now = Date.now, logger }) {
     // queue. Return false for ordinary conversation, true for consumed commands.
     async handleMessage(chatId, text, send) {
       const command = text.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-      const confirmation = /^confirmar ([a-f0-9]{8})$/.exec(command);
+      const confirmation = /^confirmar ([1-9][0-9]{2})$/.exec(command);
       const control = /^(?:confirmar|cancelar|pendiente)(?:\s|$)/.test(command);
       const { entry, expired } = current(chatId);
       const bareYes = /^(?:si|si,? enviar|si,? confirmar|enviar|confirmo)[.!]?$/.test(command);

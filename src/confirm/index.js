@@ -4,8 +4,13 @@ import { GmailError } from '../integrations/gmail/http.js';
 
 // The sender lives here, outside the model's tool dispatcher. Only an approved
 // snapshot can reach execute; preparing a proposal performs read-only checks.
-export function createConfirmationCommands({ logger, sender = createGmailSender() }) {
+export function createConfirmationCommands({ logger, sender = createGmailSender(), factMemory }) {
   const confirmations = createConfirmations({ logger, actions: {
+    ...(factMemory ? { memory_save: {
+      prepare: (payload) => payload,
+      describe: (payload) => factMemory.describeProposal(payload),
+      execute: (payload) => factMemory.saveProposal(payload),
+    } } : {}),
     demo: {
       prepare: () => ({}),
       describe: () => '*Prueba de confirmacion*\nAccion: ejecutar una simulacion local.\nNo envia correos ni modifica servicios externos.',
@@ -19,6 +24,14 @@ export function createConfirmationCommands({ logger, sender = createGmailSender(
     },
   } });
   return {
+    async proposeMemory(chatId, input, send) {
+      if (!factMemory) { await send('La memoria no esta disponible.'); return; }
+      let payload;
+      try { payload = factMemory.prepareProposal(chatId, input); }
+      catch { await send('No pude preparar el recuerdo. Revisa /recuerdos o usa /recordar clave = dato.'); return; }
+      if (!payload) { await send('Ese recuerdo ya esta guardado con esa clave.'); return; }
+      await confirmations.propose(chatId, 'memory_save', payload, send);
+    },
     async handleMessage(chatId, text, send) {
       if (text.trim().toLowerCase() === '/probar-confirmacion') {
         await confirmations.propose(chatId, 'demo', {}, send);

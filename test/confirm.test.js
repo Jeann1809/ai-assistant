@@ -23,7 +23,7 @@ function fixture(overrides = {}) {
   return { flow, executed, sent, send, advance: (ms) => { clock += ms; },
     propose: (chat = 'owner', payload = { recipient: 'fake@example.com', body: { text: 'Hello' } }) =>
       flow.propose(chat, 'test', payload, send),
-    code: () => /confirmar ([a-f0-9]{8})/.exec(sent[0])[1],
+    code: () => /confirmar ([1-9][0-9]{2})/.exec(sent[0])[1],
   };
 }
 
@@ -31,6 +31,7 @@ test('proposal shows exact details and only an explicit matching code executes',
   const f = fixture();
   await f.propose();
   assert.match(f.sent[0], /Destinatario: fake@example.com\nContenido: Hello/);
+  assert.match(f.code(), /^[1-9][0-9]{2}$/);
   assert.equal(f.executed.length, 0);
   assert.equal(await f.flow.handleMessage('owner', `CONFIRMAR ${f.code().toUpperCase()}`, f.send), true);
   assert.equal(f.executed.length, 1);
@@ -40,7 +41,7 @@ test('proposal shows exact details and only an explicit matching code executes',
 test('ambiguous yes, wrong code, and embedded commands never approve', async () => {
   const f = fixture();
   await f.propose();
-  const wrong = f.code() === '00000000' ? '11111111' : '00000000';
+  const wrong = f.code() === '100' ? '101' : '100';
   for (const text of ['si', 'sí, enviar', 'confirmar', `confirmar ${wrong}`]) {
     assert.equal(await f.flow.handleMessage('owner', text, f.send), true);
   }
@@ -193,7 +194,7 @@ test('WhatsApp simulation bypasses Gemini and SQLite, and ordinary chat still wo
     saveExchange: () => { saves++; },
   });
   await handle('owner', '/probar-confirmacion', send);
-  const code = /confirmar ([a-f0-9]{8})/.exec(sent[0])[1];
+  const code = /confirmar ([1-9][0-9]{2})/.exec(sent[0])[1];
   await handle('owner', 'si', send);
   await handle('owner', `confirmar ${code}`, send);
   assert.match(sent.at(-1), /simulacion completada/);

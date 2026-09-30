@@ -193,7 +193,7 @@ test('full conversation flow: preview, cancellation, confirmation and duplicate 
   await handle('owner', 'cancelar', send);
   assert.equal(f.posts.length, 0);
   await handle('owner', 'Envia un correo', send);
-  const code = /confirmar ([a-f0-9]{8})/.exec(sent.at(-1))[1];
+  const code = /confirmar ([1-9][0-9]{2})/.exec(sent.at(-1))[1];
   await handle('owner', 'sí', send);
   assert.equal(f.posts.length, 0);
   await handle('stranger', `confirmar ${code}`, send);
@@ -211,7 +211,7 @@ test('send failures reach the owner and consume approval', async () => {
   const sent = [];
   const send = async (text) => sent.push(text);
   await commands.proposeEmail('owner', draft, send);
-  const command = `confirmar ${/confirmar ([a-f0-9]{8})/.exec(sent[0])[1]}`;
+  const command = `confirmar ${/confirmar ([1-9][0-9]{2})/.exec(sent[0])[1]}`;
   await commands.handleMessage('owner', command, send);
   assert.match(sent.at(-1), /Revisa Enviados/);
   await commands.handleMessage('owner', command, send);

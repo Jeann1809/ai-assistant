@@ -111,8 +111,8 @@ README.md
 4. [x] SQLite short-term memory (local tests pass; live WhatsApp smoke test pending)
 5. [x] Gmail OAuth (PKCE) + read tools + **Canvas digest** (user confirmed live operation; merged to main, see `docs/gmail.md`)
 6. [x] Confirmation flow for write actions (43 offline tests pass; WhatsApp simulation smoke test pending, see `docs/confirmation.md`)
-7. [ ] Gmail send tool (implemented on `feat/gmail-send`, 60 offline tests pass; send consent + live test pending, see `docs/gmail-send.md`)
-8. [ ] sqlite-vec long-term memory
+7. [x] Gmail send tool (user confirmed live sending; merged to main, see `docs/gmail-send.md`)
+8. [x] sqlite-vec long-term memory (hybrid proposals + manual commands on `feat/long-term-memory`; 80 offline tests pass, live smoke test pending; see `docs/long-term-memory.md`)
 9. [x] End-to-end wiring (done early, 2026-09-14): WhatsApp -> Gemini -> reply, with Tavily `web_search` tool (up to 3 follow-up turns)
 10. [ ] MS Graph OAuth + basic tools (personal account only, lowest priority now that Canvas goes through Gmail)
 11. [ ] Deploy to Oracle VM with systemd
@@ -122,8 +122,8 @@ README.md
 - M1-M3 and M9 done and on `main`. Each feature was merged locally with `git merge --no-ff` and pushed, no GitHub PRs opened.
 - M4 implemented on `feat/short-term-memory`: SQLite keeps 200 messages per chat and sends the last 20 to Gemini. Turns run sequentially per chat; only successfully generated and sent replies are saved. Seven offline tests pass via `npm.cmd test`; live WhatsApp smoke test pending.
 - M5 merged to main; user confirmed Gmail/WhatsApp works live. Built-in fetch/crypto/http, no new dependencies. `npm.cmd run gmail:auth` runs Desktop PKCE consent; tokens live in ignored `data/token-gmail.json`. Gmail tools are read-only and Canvas is queried on demand.
-- M6 changes carried into `feat/gmail-send` without committing: `/probar-confirmacion` creates a harmless simulation; `confirmar CODE`, `cancelar`, `pendiente` bypass Gemini. One proposal per chat, expires after 5 minutes or restart; manual WhatsApp simulation pending.
-- M7 implemented: Gemini proposes `gmail_prepare_send`; only owner confirmation reaches the sender. One recipient, plain text, subject <=160/body <=2000 chars, full preview including verified sender. OAuth sending is opt-in via `npm.cmd run gmail:auth -- --send`. Existing read-only tokens still work for reads. 60 offline tests pass; live sending pending.
+- M6-M7 merged to main; user confirmed live sending works. `confirmar CODE`, `cancelar`, `pendiente` bypass Gemini. One proposal per chat, expires after 5 minutes or restart. Gemini only proposes `gmail_prepare_send`; one recipient, plain text, subject <=160/body <=2000 chars, preview includes verified sender. Enable sending with `npm.cmd run gmail:auth -- --send`.
+- M8 on `feat/long-term-memory`: explicit `/recordar key = fact`, `/recuerdos [page]`, `/olvidar key`. Up to 100 facts/chat, 300 chars each, three retrieved facts per answer. SQLite + sqlite-vec cosine distance; Gemini Embedding 2 (768 dimensions) with keyword fallback. Gemini can suggest an exact quote from the current user message via memory_propose; the shared M6 gate shows old/new values and saves only after confirmar CODE. No automatic writes. 80 offline tests pass; live embedding access/quality pending. Forgetting does not erase recent chat history or backups.
 - Sending does not retry network/429/5xx failures to avoid duplicates; only an explicit 401 rejection permits one refresh/retry. Approval is consumed even on failure. Check Enviados after uncertain outcomes before proposing another send.
 - Gmail consent preference: start in **Testing** with the personal Gmail as a test user; expect re-auth every 7 days. `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` must be configured locally.
 - WhatsApp only accepts the user's **other number**, configured via required `WHATSAPP_OWNER_NUMBER` (country code + digits, optional +). Groups, outgoing messages and unrecognized LIDs are ignored. Missing owner configuration prevents startup.
