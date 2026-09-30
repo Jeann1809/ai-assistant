@@ -47,4 +47,11 @@ Gmail sending is implemented behind the same confirmation flow. Authorize it
 with `npm.cmd run gmail:auth -- --send`, then ask the bot to send an email with an
 explicit recipient, subject and body. It shows the full preview before approval.
 The first version supports one recipient and plain text only. See
-[send setup and live test](docs/gmail-send.md). Live sending has not yet been verified.
+[send setup and live test](docs/gmail-send.md). The user has verified live sending.
+
+Long-term memory is available with `/recordar key = fact`, `/recuerdos` and
+`/olvidar key`. Reusing a key corrects it. Gemini can also suggest a durable fact
+from the current owner message; `confirmar CODE` saves it and `cancelar` declines.
+The preview shows any value being replaced. The bot retrieves relevant facts using
+sqlite-vec and Gemini embeddings, with local keyword search if embeddings fail.
+See [memory commands, privacy and tests](docs/long-term-memory.md).

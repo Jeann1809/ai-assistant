@@ -5,11 +5,13 @@ import { createConversationHandler } from '../memory/conversation.js';
 import { logger } from '../logger.js';
 import { ownerJid, isOwnerMessage } from './owner.js';
 import { createConfirmationCommands } from '../confirm/index.js';
+import { createFactMemory } from '../memory/facts.js';
 
-export async function startWhatsApp() {
+export async function startWhatsApp({ longTermStore }) {
   const allowedJid = ownerJid();
-  const { handleMessage: handleConfirmation, proposeEmail } = createConfirmationCommands({ logger });
-  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail });
+  const factMemory = createFactMemory({ store: longTermStore, logger });
+  const { handleMessage: handleConfirmation, proposeEmail, proposeMemory } = createConfirmationCommands({ logger, factMemory });
+  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail, proposeMemory, factMemory });
   return connectWhatsApp(async (message, sock) => {
     if (!isOwnerMessage(message, allowedJid)) return;
     const from = message.key.remoteJid;

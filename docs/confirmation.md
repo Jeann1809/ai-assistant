@@ -9,7 +9,7 @@ see [Gmail send setup](gmail-send.md). The simulation never sends email.
 
 1. Run `npm.cmd run dev` and send `/probar-confirmacion` from your allowed number.
 2. Expect a *Prueba de confirmacion* summary, a random code and these commands:
-   - `confirmar CODE`: approve exactly the displayed proposal.
+   - `confirmar CODE`: approve exactly the displayed proposal, e.g. `confirmar 472`.
    - `cancelar`: discard it.
    - `pendiente`: show it again without extending its lifetime.
 3. Send `si`. Expect a reminder to use the full command, with no execution.
@@ -27,6 +27,9 @@ also discards proposals. No secrets or configuration changes are needed for M6.
 
 - One pending proposal per chat, with a five-minute lifetime starting when the
   preview send succeeds. A new proposal never silently replaces an existing one.
+- Codes have three digits (100-999); the last 20 issued per chat are not reused
+  during the current process. Codes can recur later or after a restart; they are
+  proposal identifiers, not authentication. Access still depends on the owner gate.
 - Explicit code matching ties approval to the displayed action. A bare yes,
   embedded command, wrong code or a command from another chat cannot approve it.
 - Payloads are validated and cloned before previewing. The handler renders the
