@@ -1,4 +1,4 @@
-import { memoryKey, memoryValue } from './long-term.js';
+import { memoryKey, memoryValue, MAX_FACTS } from './long-term.js';
 import { createMemoryEmbedder } from './embeddings.js';
 
 const HELP = 'Usa /recordar clave = dato, /recuerdos [pagina] o /olvidar clave. Repite una clave para corregirla.';
@@ -31,6 +31,39 @@ export function createFactMemory({ store, embed = createMemoryEmbedder(), logger
       catch {
         logger.warn('confirmed memory save failed');
         return 'No pude guardar el recuerdo. Revisa el almacenamiento y pide una nueva propuesta.';
+      }
+    },
+    prepareProposals(chatId, inputs) {
+      if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 5) throw new Error('Usa de 1 a 5 recuerdos.');
+      const current = new Map(store.list(chatId).map((row) => [row.key, row.value]));
+      const memories = inputs.map((input) => ({ key: memoryKey(input.key), value: memoryValue(input.value) }));
+      if (new Set(memories.map((memory) => memory.key)).size !== memories.length) throw new Error('Claves repetidas.');
+      if (current.size + memories.filter((memory) => !current.has(memory.key)).length > MAX_FACTS) throw new Error('Limite de recuerdos.');
+      return { chatId, memories: memories.filter((memory) => current.get(memory.key) !== memory.value)
+        .map((memory) => ({ ...memory, previous: current.get(memory.key) ?? null })) };
+    },
+    describeProposals({ memories }) {
+      return memories.map(({ key, value, previous }, index) =>
+        `*Recuerdo ${index + 1}/${memories.length} del lote*\nClave: ${key}\n` +
+        (previous === null ? 'Nuevo recuerdo.\n' : `Reemplaza: ${previous}\n`) + `Guardar: ${value}`);
+    },
+    async saveProposals({ chatId, memories }) {
+      try {
+        const rows = [];
+        // Sequential calls respect the free tier. The database transaction starts
+        // only after embeddings finish, so no lock spans network requests.
+        for (const memory of memories) {
+          let vector = null;
+          try { vector = await embed(`${memory.key}: ${memory.value}`, 'document'); }
+          catch { logger.warn('batch memory embedding unavailable; saving text only'); }
+          rows.push({ ...memory, vector });
+        }
+        store.saveBatch(chatId, rows);
+        return `Recuerdos guardados (${rows.length}):\n` + rows.map((row) => `- ${row.key} = ${row.value}`).join('\n') +
+          (rows.some((row) => !row.vector) ? '\nAlgunos quedaron sin busqueda por significado; usare palabras para esos recuerdos.' : '');
+      } catch (err) {
+        logger.warn('confirmed batch memory save failed');
+        return err.code === 'STALE' ? err.message : 'No pude guardar el lote de recuerdos. No se guardo ninguno; revisa el almacenamiento y el limite de 100 recuerdos.';
       }
     },
     async handleMessage(chatId, text, send) {
