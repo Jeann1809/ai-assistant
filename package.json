@@ -12,7 +12,8 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "test": "node --test",
-    "gmail:auth": "node scripts/gmail-auth.js"
+    "gmail:auth": "node scripts/gmail-auth.js",
+    "calendar:auth": "node scripts/calendar-auth.js"
   },
   "license": "UNLICENSED",
   "dependencies": {

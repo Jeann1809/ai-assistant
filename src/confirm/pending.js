@@ -28,7 +28,10 @@ export function createConfirmations({ actions, now = Date.now, logger }) {
   }
 
   function instructions(entry) {
-    return `${entry.summary}\n\nPara aprobar: confirmar ${entry.code}\nPara descartar: cancelar\nVence en 5 minutos desde la propuesta. Puedes consultar: pendiente`;
+    const control = `Para aprobar: confirmar ${entry.code}\nPara descartar: cancelar\nVence en 5 minutos desde la propuesta. Puedes consultar: pendiente`;
+    return Array.isArray(entry.summary)
+      ? [...entry.summary, `Aprobar el lote completo (${entry.summary.length} elementos):\n${control}`]
+      : [`${entry.summary}\n\n${control}`];
   }
 
   return {
@@ -46,14 +49,16 @@ export function createConfirmations({ actions, now = Date.now, logger }) {
       // both inputs so later edits cannot change what the owner approves.
       const snapshot = structuredClone(handler.prepare(structuredClone(payload)));
       const summary = handler.describe(structuredClone(snapshot));
-      if (typeof summary !== 'string' || !summary.trim() || summary.length > 3000) {
-        throw new Error('Action preview must be complete and fit in one message');
+      const summaries = Array.isArray(summary) ? summary : [summary];
+      if (!summaries.length || summaries.length > 5 || summaries.some((part) =>
+        typeof part !== 'string' || !part.trim() || part.length > 3000)) {
+        throw new Error('Action preview must be complete and fit in 1-5 messages of at most 3000 characters each');
       }
       const proposal = { code: nextCode(chatId), summary,
         payload: snapshot, handler, phase: 'delivering' };
       pending.set(chatId, proposal);
       try {
-        await send(instructions(proposal));
+        for (const message of instructions(proposal)) await send(message);
         if (pending.get(chatId) === proposal) {
           proposal.expiresAt = now() + TTL_MS;
           proposal.phase = 'ready';
@@ -95,7 +100,7 @@ export function createConfirmations({ actions, now = Date.now, logger }) {
       }
       if (command === 'pendiente') {
         // Showing it again must not extend its lifetime.
-        await send(instructions(entry));
+        for (const message of instructions(entry)) await send(message);
         return true;
       }
       if (!confirmation || confirmation[1] !== entry.code) {

@@ -1,7 +1,8 @@
+import { CalendarError } from '../integrations/calendar/http.js';
 import { GmailError } from '../integrations/gmail/http.js';
 
 // Serialize read/generate/send/save per chat so follow-ups see the last answer.
-export function createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail, proposeMemory, factMemory }) {
+export function createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail, proposeMemory, proposeEvent, proposeMemories, proposeEvents, factMemory }) {
   const pending = new Map();
 
   async function respond(chatId, text, send) {
@@ -23,7 +24,22 @@ export function createConversationHandler({ getHistory, getReply, saveExchange, 
       reply = await getReply(text, history, { memories: recalled.facts });
     } catch (err) {
       logger.error('reply generation failed');
-      await send(err instanceof GmailError ? err.message : 'No pude generar una respuesta. Intenta de nuevo en un momento.');
+      await send((err instanceof GmailError || err instanceof CalendarError) ? err.message : 'No pude generar una respuesta. Intenta de nuevo en un momento.');
+      return;
+    }
+    if (reply?.action === 'calendar_prepare_create_many') {
+      if (proposeEvents) await proposeEvents(chatId, reply.events, send);
+      else await send('Calendar no esta disponible en este chat.');
+      return;
+    }
+    if (reply?.action === 'memory_propose_many') {
+      if (proposeMemories) await proposeMemories(chatId, reply.memories, send);
+      else await send('La memoria no esta disponible.');
+      return;
+    }
+    if (reply?.action === 'calendar_prepare_create') {
+      if (proposeEvent) await proposeEvent(chatId, reply.event, send);
+      else await send('Calendar no esta disponible en este chat.');
       return;
     }
     if (reply?.action === 'memory_propose') {

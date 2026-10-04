@@ -119,6 +119,10 @@ README.md
 
 ## Status / Where We Left Off
 
+- Batch proposals on `feat/batch-proposals` (includes uncommitted Calendar work): up to 5 events or memories per approval; sequential Calendar creation stops/reports partial failure, SQLite memory batches save atomically. 111 offline tests pass; live smoke tests pending. See `docs/batch-proposals.md`.
+
+- Google Calendar implemented on `feat/google-calendar`: primary-calendar reads and confirmed event creation, separate OAuth token, no new dependencies. 95 offline tests pass. Owner consent and live smoke test pending; see `docs/google-calendar.md`.
+
 - M1-M3 and M9 done and on `main`. Each feature was merged locally with `git merge --no-ff` and pushed, no GitHub PRs opened.
 - M4 implemented on `feat/short-term-memory`: SQLite keeps 200 messages per chat and sends the last 20 to Gemini. Turns run sequentially per chat; only successfully generated and sent replies are saved. Seven offline tests pass via `npm.cmd test`; live WhatsApp smoke test pending.
 - M5 merged to main; user confirmed Gmail/WhatsApp works live. Built-in fetch/crypto/http, no new dependencies. `npm.cmd run gmail:auth` runs Desktop PKCE consent; tokens live in ignored `data/token-gmail.json`. Gmail tools are read-only and Canvas is queried on demand.

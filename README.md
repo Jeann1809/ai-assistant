@@ -55,3 +55,12 @@ from the current owner message; `confirmar CODE` saves it and `cancelar` decline
 The preview shows any value being replaced. The bot retrieves relevant facts using
 sqlite-vec and Gemini embeddings, with local keyword search if embeddings fail.
 See [memory commands, privacy and tests](docs/long-term-memory.md).
+
+## Google Calendar
+
+Read primary-calendar events and create new events after WhatsApp confirmation.
+Run `npm.cmd run calendar:auth -- --write` after enabling Google Calendar API.
+Setup, scopes and live smoke test: [docs/google-calendar.md](docs/google-calendar.md).
+
+Events and memories support batches of up to five items with one confirmation.
+Behavior and testing: [docs/batch-proposals.md](docs/batch-proposals.md).

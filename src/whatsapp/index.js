@@ -10,8 +10,8 @@ import { createFactMemory } from '../memory/facts.js';
 export async function startWhatsApp({ longTermStore }) {
   const allowedJid = ownerJid();
   const factMemory = createFactMemory({ store: longTermStore, logger });
-  const { handleMessage: handleConfirmation, proposeEmail, proposeMemory } = createConfirmationCommands({ logger, factMemory });
-  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail, proposeMemory, factMemory });
+  const { handleMessage: handleConfirmation, proposeEmail, proposeMemory, proposeEvent, proposeMemories, proposeEvents } = createConfirmationCommands({ logger, factMemory });
+  const handleConversation = createConversationHandler({ getHistory, getReply, saveExchange, logger, handleConfirmation, proposeEmail, proposeMemory, proposeEvent, proposeMemories, proposeEvents, factMemory });
   return connectWhatsApp(async (message, sock) => {
     if (!isOwnerMessage(message, allowedJid)) return;
     const from = message.key.remoteJid;

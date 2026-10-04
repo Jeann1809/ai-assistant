@@ -54,6 +54,24 @@ export function openLongTermMemory(path = process.env.LONG_TERM_DB_PATH || './da
       if (!get.get(chatId, key) && count.get(chatId).n >= MAX_FACTS) throw new Error('Llegaste a 100 recuerdos. Borra uno con /olvidar antes de guardar otro.');
       upsert.run(chatId, key, value, vector ? vectorBlob(vector) : null, vector ? EMBEDDING_VERSION : null);
     }),
+    // Validate every approved snapshot inside the transaction. A stale value,
+    // storage error or capacity limit rolls back the entire batch.
+    saveBatch: db.transaction((chatId, inputs) => {
+      if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 5) throw new Error('Invalid memory batch');
+      const rows = inputs.map(({ key, value, previous, vector }) => ({
+        key: memoryKey(key), value: memoryValue(value), previous,
+        blob: vector ? vectorBlob(vector) : null,
+      }));
+      if (new Set(rows.map((row) => row.key)).size !== rows.length) throw new Error('Duplicate memory keys');
+      const current = new Map(all.all(chatId).map((row) => [row.key, row.value]));
+      if (rows.some((row) => (current.get(row.key) ?? null) !== row.previous)) {
+        const err = new Error('Un recuerdo cambio desde la propuesta. No guarde ninguno del lote; pide una nueva propuesta.');
+        err.code = 'STALE';
+        throw err;
+      }
+      if (current.size + rows.filter((row) => !current.has(row.key)).length > MAX_FACTS) throw new Error('Memory capacity exceeded');
+      for (const row of rows) upsert.run(chatId, row.key, row.value, row.blob, row.blob ? EMBEDDING_VERSION : null);
+    }),
     forget: (chatId, key) => remove.run(chatId, memoryKey(key)).changes > 0,
     search(chatId, query, vector = null) {
       const tokens = words(query);
